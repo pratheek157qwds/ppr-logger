@@ -1,32 +1,16 @@
-# Prerequisites
-*.d
+# ═══════ IDE / Editor ═══════
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# ═══════ Node (if extending NUI) ═══════
+node_modules/
+package-lock.json
 
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+# ═══════ OS files ═══════
+desktop.ini
+ehthumbs.db

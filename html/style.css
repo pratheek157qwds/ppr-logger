@@ -1,0 +1,278 @@
+/*
+    ppr-logger · style.css
+    ───────────────────────
+    Dark, compact "evidence card" design.
+    Body MUST be transparent (NUI overlays the game).
+
+    Design notes:
+    - Glassmorphism-inspired backdrop blur
+    - Red accent for disconnected, yellow for combat log
+    - Monospace values for easy readability of identifiers
+    - Smooth pop-in animation
+    - Scrollable body for many identifiers
+*/
+
+/* ═══════ RESET ═══════ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ═══════ FONTS ═══════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+body {
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ═══════ CARD CONTAINER ═══════ */
+.hidden {
+    display: none !important;
+}
+
+#card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    max-height: 80vh;
+    background: rgba(12, 12, 18, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 60, 60, 0.25);
+    border-radius: 14px;
+    color: #e8e8ef;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 8px 48px rgba(0, 0, 0, 0.65),
+        0 2px 12px rgba(255, 50, 50, 0.08);
+    animation: cardPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#card.combat-log {
+    border-color: rgba(255, 200, 0, 0.35);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 8px 48px rgba(0, 0, 0, 0.65),
+        0 2px 16px rgba(255, 200, 0, 0.12);
+}
+
+@keyframes cardPop {
+    from {
+        transform: translate(-50%, -48%) scale(0.94);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ═══════ HEADER ═══════ */
+.card-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.badge {
+    background: linear-gradient(135deg, #ff3b3b, #cc2020);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(255, 59, 59, 0.3);
+}
+
+.badge.combat-log {
+    background: linear-gradient(135deg, #ffc800, #e6a800);
+    color: #1a1a00;
+    box-shadow: 0 2px 8px rgba(255, 200, 0, 0.3);
+}
+
+.time-badge {
+    font-size: 10px;
+    color: #666;
+    font-family: 'JetBrains Mono', monospace;
+    margin-left: auto;
+}
+
+.card-header h2 {
+    font-size: 21px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1.2;
+}
+
+.card-header p {
+    color: #777;
+    font-size: 12px;
+    margin-top: 3px;
+    font-weight: 400;
+}
+
+/* ═══════ BODY (scrollable rows) ═══════ */
+.card-body {
+    padding: 6px 22px 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Custom scrollbar */
+.card-body::-webkit-scrollbar {
+    width: 4px;
+}
+.card-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.card-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+.card-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ═══════ DATA ROWS ═══════ */
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    gap: 10px;
+}
+
+.row:last-child {
+    border-bottom: none;
+}
+
+.row .label {
+    color: #6b6b7b;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.row .value {
+    flex: 1;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    color: #c8c8d5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.row .copy {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #888;
+    border-radius: 5px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    margin-left: 8px;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.row .copy:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #ddd;
+}
+
+.row .copy:active {
+    transform: scale(0.96);
+}
+
+.row .copy.done {
+    background: rgba(46, 125, 50, 0.3);
+    border-color: rgba(76, 175, 80, 0.3);
+    color: #81c784;
+}
+
+/* ═══════ FOOTER ═══════ */
+.card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 14px 22px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn {
+    flex: 1;
+    padding: 9px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4a6cf7, #3b5de7);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(74, 108, 247, 0.25);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a7cff, #4b6df7);
+    box-shadow: 0 4px 14px rgba(74, 108, 247, 0.35);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #999;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #ccc;
+}
+
+kbd {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-left: 4px;
+}

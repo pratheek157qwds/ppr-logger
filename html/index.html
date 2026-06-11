@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPR Logger — Inspection Card</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!--
+        NUI Inspection Card
+        ───────────────────
+        Overlays the game (transparent body).
+        Rows are generated dynamically by script.js.
+        Card is hidden by default, shown when Lua sends { action: 'open' }.
+    -->
+    <div id="card" class="hidden">
+        <!-- Header -->
+        <div class="card-header">
+            <div class="header-top">
+                <span class="badge" id="badge">DISCONNECTED</span>
+                <span class="time-badge" id="timeBadge"></span>
+            </div>
+            <h2 id="charName">—</h2>
+            <p id="subInfo">—</p>
+        </div>
+
+        <!-- Scrollable body with data rows -->
+        <div id="rows" class="card-body"></div>
+
+        <!-- Footer buttons -->
+        <div class="card-footer">
+            <button id="copyAll" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Copy All
+            </button>
+            <button id="closeBtn" class="btn btn-secondary">
+                ✕ Close
+                <kbd>ESC</kbd>
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
