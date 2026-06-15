@@ -8,6 +8,8 @@
 ]]
 
 Config = {}
+Config.Debug = true -- Set to true to enable test commands (e.g. /testdisconnect)
+
 
 -- ════════════════════════════════════════════════════════
 --  WEBHOOKS (SERVER-ONLY — clients never call these)
@@ -15,12 +17,12 @@ Config = {}
 -- Map a channel name → Discord webhook URL.
 -- Replace the placeholder URLs before use.
 Config.Webhooks = {
-    ['joins']       = 'https://discord.com/api/webhooks/XXXX/XXXX',
-    ['leaves']      = 'https://discord.com/api/webhooks/XXXX/XXXX',
-    ['chat']        = 'https://discord.com/api/webhooks/XXXX/XXXX',
-    ['deaths']      = 'https://discord.com/api/webhooks/XXXX/XXXX',
-    ['combatlog']   = 'https://discord.com/api/webhooks/XXXX/XXXX',
-    ['custom']      = 'https://discord.com/api/webhooks/XXXX/XXXX', -- fallback for exports
+    ['joins']       = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C',
+    ['leaves']      = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C',
+    ['chat']        = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C',
+    ['deaths']      = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C',
+    ['combatlog']   = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C',
+    ['custom']      = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C', -- fallback for exports
 }
 
 -- Bot appearance in Discord
@@ -67,16 +69,16 @@ Config.LeavePed = {
 
     --- Mugshot lineup animation
     anim = {
-        dict = 'mp_character_creation@lineup@male_a',
-        name = 'loop_raised',
+        dict = 'mp_character_creation@customise@male_a',
+        name = 'loop',
     },
 
-    --- Police ID board prop (attached to left hand)
+    --- Police ID board prop (attached to left forearm/hand)
     prop = {
-        model = `prop_police_id_board`,
-        bone  = 28422,              -- SKEL_L_Hand
-        pos   = vec3(0.12, 0.04, -0.02),
-        rot   = vec3(10.0, 0.0, 0.0),
+        model = `prop_police_id_text`,
+        bone  = 58868,
+        pos   = vec3(0.12, 0.24, 0.0),
+        rot   = vec3(5.0, 0.0, 70.0),
     },
 }
 

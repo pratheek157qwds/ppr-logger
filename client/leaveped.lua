@@ -20,6 +20,27 @@
 local dressedPeds = {}  -- ped handle → board object handle
 local nearbyGhost = nil -- closest ghost ped (set by scanner, read by interaction loop)
 
+local boardScaleform = nil
+local renderTarget = nil
+
+CreateThread(function()
+    boardScaleform = RequestScaleformMovie("MUGSHOT_BOARD_01")
+    while not HasScaleformMovieLoaded(boardScaleform) do
+        Wait(10)
+    end
+end)
+
+CreateThread(function()
+    local modelHash = `prop_police_id_text`
+    if not IsNamedRendertargetRegistered("ID_Text") then
+        RegisterNamedRendertarget("ID_Text", false)
+    end
+    if not IsNamedRendertargetLinked(modelHash) then
+        LinkNamedRendertarget(modelHash)
+    end
+    renderTarget = GetNamedRendertargetRenderId("ID_Text")
+end)
+
 -- ════════════════════════════════════════════════════════
 --  HELPERS
 -- ════════════════════════════════════════════════════════
@@ -153,44 +174,97 @@ CreateThread(function()
 end)
 
 -- ════════════════════════════════════════════════════════
---  LOOP 2: ADAPTIVE INTERACTION (per-frame when close)
+--  HELPERS FOR MUGSHOT BOARD
+-- ════════════════════════════════════════════════════════
+
+--- Draws text on the mugshot board using custom styling.
+---@param coords vector3
+---@param text   string
+---@param scale  number|nil
+local function DrawBoardText3D(coords, text, scale)
+    scale = scale or 0.16
+    SetTextScale(scale, scale)
+    SetTextFont(2) -- Monospace font fits the physical board style perfectly
+    SetTextCentre(true)
+    SetTextColour(255, 255, 255, 240)
+    SetDrawOrigin(coords.x, coords.y, coords.z, 0)
+    BeginTextCommandDisplayText('STRING')
+    AddTextComponentSubstringPlayerName(text)
+    EndTextCommandDisplayText(0.0, 0.0)
+    ClearDrawOrigin()
+end
+
+-- ════════════════════════════════════════════════════════
+--  LOOP 2: ADAPTIVE INTERACTION & RENDERING (per-frame when close)
 -- ════════════════════════════════════════════════════════
 CreateThread(function()
     while true do
-        if nearbyGhost and DoesEntityExist(nearbyGhost) then
-            local data = Entity(nearbyGhost).state.leaveData
-            local pedCoords = GetEntityCoords(nearbyGhost)
-            local myCoords  = GetEntityCoords(PlayerPedId())
-            local dist = #(myCoords - pedCoords)
+        local myCoords = GetEntityCoords(PlayerPedId())
+        local pedsToDraw = {}
 
-            if data and dist < Config.LeavePed.drawDist then
-                -- ── Name tag (always visible within draw distance) ──
-                local tagColor = data.isCombatLog and '~y~' or '~r~'
-                local tagSuffix = data.isCombatLog and ' ~y~[COMBAT LOG]' or ''
-                DrawText3D(
-                    pedCoords + vec3(0, 0, 1.15),
-                    ('%s%s~w~ left the server (%s)%s'):format(
-                        tagColor, data.charName, data.leftAt, tagSuffix
-                    ),
-                    0.30
-                )
+        for ped, board in pairs(dressedPeds) do
+            if DoesEntityExist(ped) then
+                local pedCoords = GetEntityCoords(ped)
+                local dist = #(myCoords - pedCoords)
+                if dist < Config.LeavePed.drawDist then
+                    table.insert(pedsToDraw, {
+                        ped = ped,
+                        board = board,
+                        coords = pedCoords,
+                        dist = dist
+                    })
+                end
+            end
+        end
 
-                -- ── Interaction prompt (close range) ──
-                if dist < Config.LeavePed.interactDist then
-                    DrawText3D(pedCoords + vec3(0, 0, 0.90), '~b~[E]~w~ Inspect', 0.26)
+        if #pedsToDraw > 0 then
+            for _, info in ipairs(pedsToDraw) do
+                local ped = info.ped
+                local board = info.board
+                local pedCoords = info.coords
+                local dist = info.dist
+                local data = Entity(ped).state.leaveData
 
-                    if IsControlJustPressed(0, Config.LeavePed.interactKey) then
-                        SendNUIMessage({ action = 'open', data = data })
-                        SetNuiFocus(true, true)
+                if data then
+                    -- ── Mugshot Board Text (drawn using Scaleform on prop_police_id_text) ──
+                    if dist < 8.0 and board and board ~= true and DoesEntityExist(board) then
+                        if boardScaleform and HasScaleformMovieLoaded(boardScaleform) and renderTarget then
+                            local displayName = tostring(data.charName):upper()
+                            local cid = data.citizenId or "UNKNOWN"
+                            if cid == 'N/A' or cid == '' then cid = "UNKNOWN" end
+
+                            -- Update scaleform data
+                            BeginScaleformMovieMethod(boardScaleform, "SET_BOARD")
+                            PushScaleformMovieMethodParameterString("") -- Title/Age (top)
+                            PushScaleformMovieMethodParameterString(displayName) -- Name (center)
+                            PushScaleformMovieMethodParameterString(tostring(cid):upper()) -- Registration/CID (bottom)
+                            PushScaleformMovieMethodParameterString("") -- Header (very top)
+                            PushScaleformMovieMethodParameterInt(0)
+                            PushScaleformMovieMethodParameterInt(0)
+                            PushScaleformMovieMethodParameterInt(0)
+                            EndScaleformMovieMethod()
+
+                            -- Draw on render target
+                            SetTextRenderId(renderTarget)
+                            DrawScaleformMovie(boardScaleform, 0.405, 0.38, 0.85, 0.85, 255, 255, 255, 255, 0)
+                            SetTextRenderId(GetDefaultScriptRendertargetRenderId())
+                        end
+                    end
+
+                    -- ── Interaction prompt (closest ghost only) ──
+                    if ped == nearbyGhost and dist < Config.LeavePed.interactDist then
+                        DrawText3D(pedCoords + vec3(0, 0, 0.90), '~b~[E]~w~ Inspect', 0.26)
+
+                        if IsControlJustPressed(0, Config.LeavePed.interactKey) then
+                            SendNUIMessage({ action = 'open', data = data })
+                            SetNuiFocus(true, true)
+                        end
                     end
                 end
-
-                Wait(0) -- per-frame rendering while in range
-            else
-                Wait(250) -- nearby but just outside draw distance
             end
+            Wait(0) -- per-frame rendering while close
         else
-            Wait(500) -- no ghost ped anywhere near — nearly free
+            Wait(500) -- idle wait when no ghost peds nearby
         end
     end
 end)
@@ -201,4 +275,11 @@ end)
 RegisterNUICallback('close', function(_, cb)
     SetNuiFocus(false, false)
     cb('ok')
+end)
+
+AddEventHandler('onResourceStop', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    if boardScaleform then
+        SetScaleformMovieAsNoLongerNeeded(boardScaleform)
+    end
 end)

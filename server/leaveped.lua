@@ -110,20 +110,21 @@ local function IsCombatLog(src, disconnectType)
 end
 
 -- ════════════════════════════════════════════════════════
---  MAIN: PLAYER DROPPED
+--  MAIN: PLAYER DROPPED & SIMULATION
 -- ════════════════════════════════════════════════════════
-AddEventHandler('playerDropped', function(reason)
-    local src = source
 
+local function TriggerPlayerDisconnect(src, reason, isSimulated)
     -- ── 1) CAPTURE ──
     -- The player's ped still exists during this event — that's the trick.
     -- We grab everything we need before it despawns.
     local playerPed = GetPlayerPed(src)
     if not playerPed or playerPed == 0 then
         -- Edge case: player never fully spawned (dropped during loading)
-        joinTimes[src]  = nil
-        lastDamage[src] = nil
-        lastDead[src]   = nil
+        if not isSimulated then
+            joinTimes[src]  = nil
+            lastDamage[src] = nil
+            lastDead[src]   = nil
+        end
         return
     end
 
@@ -142,14 +143,16 @@ AddEventHandler('playerDropped', function(reason)
     local wasDead = lastDead[src] or false
 
     -- Clean up tracking tables
-    joinTimes[src]  = nil
-    lastDamage[src] = nil
-    lastDead[src]   = nil
+    if not isSimulated then
+        joinTimes[src]  = nil
+        lastDamage[src] = nil
+        lastDead[src]   = nil
+    end
 
     -- ── 2) DISCORD LOG (full data, including IP — staff-only) ──
     local title = combatLog
-        and '⚠️ POSSIBLE COMBAT LOG'
-        or '📤 Player Left'
+        and (isSimulated and '⚠️ POSSIBLE COMBAT LOG [TEST]' or '⚠️ POSSIBLE COMBAT LOG')
+        or (isSimulated and '📤 Player Left [TEST]' or '📤 Player Left')
 
     local embedColor = combatLog and 'yellow' or 'red'
 
@@ -190,11 +193,11 @@ AddEventHandler('playerDropped', function(reason)
 
     -- Send to appropriate channel
     local channel = combatLog and Config.CombatLog.webhookChannel or 'leaves'
-    LogInternal(channel, title, ('**%s** disconnected.'):format(charName), embedColor, fields)
+    LogInternal(channel, title, ('**%s** %s.'):format(charName, isSimulated and 'simulated disconnection' or 'disconnected'), embedColor, fields)
 
     -- Also send to 'leaves' if combat log uses a separate channel
     if combatLog and Config.CombatLog.webhookChannel ~= 'leaves' then
-        LogInternal('leaves', title, ('**%s** disconnected.'):format(charName), embedColor, fields)
+        LogInternal('leaves', title, ('**%s** %s.'):format(charName, isSimulated and 'simulated disconnection' or 'disconnected'), embedColor, fields)
     end
 
     -- ── 3) SPAWN GHOST PED ──
@@ -231,9 +234,10 @@ AddEventHandler('playerDropped', function(reason)
     end
 
     Entity(ped).state:set('leaveData', {
-        charName       = charName,
+        charName       = charName .. (isSimulated and ' [TEST]' or ''),
+        citizenId      = GetCitizenID(src),
         accName        = accName,
-        reason         = reason or 'unknown',
+        reason         = (reason or 'unknown') .. (isSimulated and ' (SIMULATED)' or ''),
         session        = session,
         leftAt         = os.date('%H:%M:%S'),
         disconnectType = disconnectType,
@@ -244,6 +248,15 @@ AddEventHandler('playerDropped', function(reason)
     local netId = NetworkGetNetworkIdFromEntity(ped)
     activePeds[netId] = ped
 
+    -- Send client confirmation chat message if simulated
+    if isSimulated then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = { 0, 255, 0 },
+            multiline = true,
+            args = { 'PPR Logger', 'Simulated disconnect triggered! A ghost ped has been spawned at your location and logged to Discord.' }
+        })
+    end
+
     -- ── 5) DESPAWN TIMER ──
     SetTimeout(Config.LeavePed.despawnTime, function()
         if DoesEntityExist(ped) then
@@ -251,7 +264,21 @@ AddEventHandler('playerDropped', function(reason)
         end
         activePeds[netId] = nil
     end)
+end
+
+AddEventHandler('playerDropped', function(reason)
+    TriggerPlayerDisconnect(source, reason, false)
 end)
+
+if Config.Debug then
+    RegisterCommand('testdisconnect', function(source, args, rawCommand)
+        if source == 0 then
+            print('^1[ppr-logger]^7 This command must be run by a player in-game.')
+            return
+        end
+        TriggerPlayerDisconnect(source, 'Simulated Disconnect (Test Command)', true)
+    end, false)
+end
 
 -- ════════════════════════════════════════════════════════
 --  CLEANUP: No orphan peds on resource restart

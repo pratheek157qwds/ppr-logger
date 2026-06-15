@@ -129,6 +129,10 @@ window.addEventListener('message', (event) => {
         addRow('Type', d.disconnectType.toUpperCase());
     }
 
+    if (d.citizenId && d.citizenId !== 'N/A' && d.citizenId !== '') {
+        addRow('Citizen ID', d.citizenId);
+    }
+
     // Identifiers
     if (d.ids && typeof d.ids === 'object') {
         for (const [type, value] of Object.entries(d.ids)) {

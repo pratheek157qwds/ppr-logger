@@ -97,3 +97,32 @@ function FormatDuration(ms)
         return ('%dm'):format(mins)
     end
 end
+
+--- Resolves the roleplay citizen ID / character identifier.
+---@param src number  player server id
+---@return string
+function GetCitizenID(src)
+    -- ═══ QBCore ═══
+    if GetResourceState('qb-core') == 'started' then
+        local ok, QBCore = pcall(exports['qb-core'].GetCoreObject, exports['qb-core'])
+        if ok and QBCore then
+            local Player = QBCore.Functions.GetPlayer(src)
+            if Player and Player.PlayerData then
+                return Player.PlayerData.citizenid or 'UNKNOWN'
+            end
+        end
+    end
+
+    -- ═══ ESX ═══
+    if GetResourceState('es_extended') == 'started' then
+        local ok, ESX = pcall(exports['es_extended'].getSharedObject, exports['es_extended'])
+        if ok and ESX then
+            local xPlayer = ESX.GetPlayerFromId(src)
+            if xPlayer then
+                return xPlayer.identifier or 'UNKNOWN'
+            end
+        end
+    end
+
+    return 'N/A'
+end

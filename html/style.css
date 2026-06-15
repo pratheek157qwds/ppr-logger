@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 /*
     ppr-logger · style.css
     ───────────────────────
@@ -5,7 +7,6 @@
     Body MUST be transparent (NUI overlays the game).
 
     Design notes:
-    - Glassmorphism-inspired backdrop blur
     - Red accent for disconnected, yellow for combat log
     - Monospace values for easy readability of identifiers
     - Smooth pop-in animation
@@ -19,11 +20,13 @@
     box-sizing: border-box;
 }
 
-/* ═══════ FONTS ═══════ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-body {
-    background: transparent;
+html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    background-color: rgba(0, 0, 0, 0) !important;
     overflow: hidden;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
@@ -40,9 +43,7 @@ body {
     transform: translate(-50%, -50%);
     width: 420px;
     max-height: 80vh;
-    background: rgba(12, 12, 18, 0.94);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(12, 12, 18, 0.98); /* Slightly higher opacity since blur is removed */
     border: 1px solid rgba(255, 60, 60, 0.25);
     border-radius: 14px;
     color: #e8e8ef;

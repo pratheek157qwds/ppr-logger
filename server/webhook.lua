@@ -45,8 +45,8 @@ end
 local function IsValidWebhook(url)
     if not url then return false end
     if url:find('XXXX') then return false end
-    if not url:match('^https://discord%.com/api/webhooks/') and
-       not url:match('^https://discordapp%.com/api/webhooks/') then
+    if not url:match('^https://[%w%.%-]*discord%.com/api/webhooks/') and
+       not url:match('^https://[%w%.%-]*discordapp%.com/api/webhooks/') then
         return false
     end
     return true
