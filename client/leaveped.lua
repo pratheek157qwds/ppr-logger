@@ -17,8 +17,8 @@
     Idle cost ≈ 0.00ms. Only spikes near a ghost ped.
 ]]
 
-local dressedPeds = {}  -- ped handle → board object handle
-local nearbyGhost = nil -- closest ghost ped (set by scanner, read by interaction loop)
+local dressedPeds = {}
+local nearbyGhost = nil
 
 local boardScaleform = nil
 local renderTarget = nil
@@ -41,15 +41,6 @@ CreateThread(function()
     renderTarget = GetNamedRendertargetRenderId("ID_Text")
 end)
 
--- ════════════════════════════════════════════════════════
---  HELPERS
--- ════════════════════════════════════════════════════════
-
---- Draws floating 3D text at world coordinates.
---- Classic FiveM helper — used for name tags and prompts.
----@param coords vector3
----@param text   string
----@param scale  number|nil  text scale (default 0.30)
 local function DrawText3D(coords, text, scale)
     scale = scale or 0.30
     SetTextScale(scale, scale)
@@ -64,9 +55,6 @@ local function DrawText3D(coords, text, scale)
     ClearDrawOrigin()
 end
 
---- Loads an anim dict with timeout protection.
----@param dict string
----@return boolean loaded
 local function SafeLoadAnimDict(dict)
     if HasAnimDictLoaded(dict) then return true end
     RequestAnimDict(dict)
@@ -77,9 +65,6 @@ local function SafeLoadAnimDict(dict)
     return HasAnimDictLoaded(dict)
 end
 
---- Loads a model with timeout protection.
----@param model number|string
----@return boolean loaded
 local function SafeLoadModel(model)
     if HasModelLoaded(model) then return true end
     RequestModel(model)
@@ -90,24 +75,18 @@ local function SafeLoadModel(model)
     return HasModelLoaded(model)
 end
 
---- Freezes the ped, plays mugshot-lineup anim, attaches the ID board.
---- Runs ONCE per ped, locally on each client.
----@param ped number  entity handle
 local function DressGhostPed(ped)
-    -- Freeze & protect
     FreezeEntityPosition(ped, true)
     SetEntityInvincible(ped, true)
-    SetBlockingOfNonTemporaryEvents(ped, true) -- ped ignores gunshots, cars, etc.
+    SetBlockingOfNonTemporaryEvents(ped, true)
     SetPedCanRagdoll(ped, false)
 
-    -- Animation
     local animCfg = Config.LeavePed.anim
     if SafeLoadAnimDict(animCfg.dict) then
         TaskPlayAnim(ped, animCfg.dict, animCfg.name,
             8.0, -8.0, -1, 1, 0, false, false, false)
     end
 
-    -- Mugshot board prop
     local propCfg = Config.LeavePed.prop
     local board = nil
 
@@ -126,13 +105,9 @@ local function DressGhostPed(ped)
         SetModelAsNoLongerNeeded(propCfg.model)
     end
 
-    dressedPeds[ped] = board or true -- store board handle (or true if no board)
+    dressedPeds[ped] = board or true
 end
 
--- ════════════════════════════════════════════════════════
---  LOOP 1: SLOW SCANNER (every 1 second)
--- ════════════════════════════════════════════════════════
--- Scans for ghost peds, dresses new ones, finds closest.
 CreateThread(function()
     while true do
         local myCoords = GetEntityCoords(PlayerPedId())
@@ -143,12 +118,10 @@ CreateThread(function()
             local data = Entity(ped).state.leaveData
 
             if data then
-                -- Dress if not yet dressed
                 if not dressedPeds[ped] then
                     DressGhostPed(ped)
                 end
 
-                -- Track closest ghost
                 local dist = #(myCoords - GetEntityCoords(ped))
                 if dist < closestDist then
                     closestDist = dist
@@ -159,7 +132,6 @@ CreateThread(function()
 
         nearbyGhost = closestPed
 
-        -- Clean up boards for peds that no longer exist (despawned by server)
         for ped, board in pairs(dressedPeds) do
             if not DoesEntityExist(ped) then
                 if type(board) ~= 'boolean' and DoesEntityExist(board) then
@@ -173,18 +145,10 @@ CreateThread(function()
     end
 end)
 
--- ════════════════════════════════════════════════════════
---  HELPERS FOR MUGSHOT BOARD
--- ════════════════════════════════════════════════════════
-
---- Draws text on the mugshot board using custom styling.
----@param coords vector3
----@param text   string
----@param scale  number|nil
 local function DrawBoardText3D(coords, text, scale)
     scale = scale or 0.16
     SetTextScale(scale, scale)
-    SetTextFont(2) -- Monospace font fits the physical board style perfectly
+    SetTextFont(2)
     SetTextCentre(true)
     SetTextColour(255, 255, 255, 240)
     SetDrawOrigin(coords.x, coords.y, coords.z, 0)
@@ -194,9 +158,6 @@ local function DrawBoardText3D(coords, text, scale)
     ClearDrawOrigin()
 end
 
--- ════════════════════════════════════════════════════════
---  LOOP 2: ADAPTIVE INTERACTION & RENDERING (per-frame when close)
--- ════════════════════════════════════════════════════════
 CreateThread(function()
     while true do
         local myCoords = GetEntityCoords(PlayerPedId())
@@ -226,32 +187,28 @@ CreateThread(function()
                 local data = Entity(ped).state.leaveData
 
                 if data then
-                    -- ── Mugshot Board Text (drawn using Scaleform on prop_police_id_text) ──
                     if dist < 8.0 and board and board ~= true and DoesEntityExist(board) then
                         if boardScaleform and HasScaleformMovieLoaded(boardScaleform) and renderTarget then
                             local displayName = tostring(data.charName):upper()
                             local cid = data.citizenId or "UNKNOWN"
                             if cid == 'N/A' or cid == '' then cid = "UNKNOWN" end
 
-                            -- Update scaleform data
                             BeginScaleformMovieMethod(boardScaleform, "SET_BOARD")
-                            PushScaleformMovieMethodParameterString("") -- Title/Age (top)
-                            PushScaleformMovieMethodParameterString(displayName) -- Name (center)
-                            PushScaleformMovieMethodParameterString(tostring(cid):upper()) -- Registration/CID (bottom)
-                            PushScaleformMovieMethodParameterString("") -- Header (very top)
+                            PushScaleformMovieMethodParameterString("")
+                            PushScaleformMovieMethodParameterString(displayName)
+                            PushScaleformMovieMethodParameterString(tostring(cid):upper())
+                            PushScaleformMovieMethodParameterString("")
                             PushScaleformMovieMethodParameterInt(0)
                             PushScaleformMovieMethodParameterInt(0)
                             PushScaleformMovieMethodParameterInt(0)
                             EndScaleformMovieMethod()
 
-                            -- Draw on render target
                             SetTextRenderId(renderTarget)
                             DrawScaleformMovie(boardScaleform, 0.405, 0.38, 0.85, 0.85, 255, 255, 255, 255, 0)
                             SetTextRenderId(GetDefaultScriptRendertargetRenderId())
                         end
                     end
 
-                    -- ── Interaction prompt (closest ghost only) ──
                     if ped == nearbyGhost and dist < Config.LeavePed.interactDist then
                         DrawText3D(pedCoords + vec3(0, 0, 0.90), '~b~[E]~w~ Inspect', 0.26)
 
@@ -262,16 +219,13 @@ CreateThread(function()
                     end
                 end
             end
-            Wait(0) -- per-frame rendering while close
+            Wait(0)
         else
-            Wait(500) -- idle wait when no ghost peds nearby
+            Wait(500)
         end
     end
 end)
 
--- ════════════════════════════════════════════════════════
---  NUI CALLBACK: Card closed
--- ════════════════════════════════════════════════════════
 RegisterNUICallback('close', function(_, cb)
     SetNuiFocus(false, false)
     cb('ok')

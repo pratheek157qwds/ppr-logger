@@ -17,11 +17,8 @@
 
 local deathReported = false
 local lastDamageReport = 0
-local DAMAGE_REPORT_COOLDOWN = 1000 -- ms between damage reports
+local DAMAGE_REPORT_COOLDOWN = 1000
 
--- ════════════════════════════════════════════════════════
---  DEATH DETECTION
--- ════════════════════════════════════════════════════════
 CreateThread(function()
     while true do
         local ped = PlayerPedId()
@@ -30,7 +27,6 @@ CreateThread(function()
         if isDead and not deathReported then
             deathReported = true
 
-            -- Resolve killer → server id (-1 if not a player)
             local killerEntity = GetPedSourceOfDeath(ped)
             local killerServerId = -1
             local weaponHash = GetPedCauseOfDeath(ped)
@@ -49,11 +45,10 @@ CreateThread(function()
                 weaponHash
             )
 
-            -- Also report death state for combat-log tracking
             TriggerServerEvent('ppr-logger:server:playerDeathState', true)
 
         elseif not isDead and deathReported then
-            deathReported = false -- revived / respawned → re-arm
+            deathReported = false
             TriggerServerEvent('ppr-logger:server:playerDeathState', false)
         end
 
@@ -61,9 +56,6 @@ CreateThread(function()
     end
 end)
 
--- ════════════════════════════════════════════════════════
---  DAMAGE TRACKING (for combat-log detection)
--- ════════════════════════════════════════════════════════
 CreateThread(function()
     while true do
         local ped = PlayerPedId()
@@ -71,11 +63,9 @@ CreateThread(function()
         if HasEntityBeenDamagedByAnyPed(ped) then
             local now = GetGameTimer()
 
-            -- Cooldown to prevent event spam
             if (now - lastDamageReport) > DAMAGE_REPORT_COOLDOWN then
                 lastDamageReport = now
 
-                -- Try to find who attacked us
                 local attackerServerId = -1
                 for _, player in ipairs(GetActivePlayers()) do
                     local otherPed = GetPlayerPed(player)

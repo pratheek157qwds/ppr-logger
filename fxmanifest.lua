@@ -18,11 +18,8 @@ description 'PPR Development — Advanced Discord webhook logger with ghost-ped 
 version '1.0.0'
 repository 'https://github.com/pratheek157qwds/ppr-logger'
 
--- ═══════ SHARED (loads on both server + client) ═══════
 shared_script 'config.lua'
 
--- ═══════ SERVER ═══════
--- Load order matters: utils.lua defines globals used by subsequent files
 server_scripts {
     'server/utils.lua',
     'server/webhook.lua',
@@ -30,13 +27,11 @@ server_scripts {
     'server/events.lua',
 }
 
--- ═══════ CLIENT ═══════
 client_scripts {
     'client/leaveped.lua',
     'client/death.lua',
 }
 
--- ═══════ NUI ═══════
 ui_page 'html/index.html'
 
 files {

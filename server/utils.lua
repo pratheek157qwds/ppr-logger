@@ -5,20 +5,70 @@
     Loaded FIRST in the manifest so these globals exist when needed.
 ]]
 
---- Returns a table of the player's identifiers, keyed by type.
---- Example output: { license = 'license:abc123', steam = 'steam:1100001...', ip = '1.2.3.4' }
----
---- We iterate the native identifier list AND grab IP separately via
---- GetPlayerEndpoint (on newer builds, IP is no longer in the identifier loop).
----
----@param src number  player server id
----@return table<string, string>
+local Weapons = {
+    [`WEAPON_UNARMED`] = 'Fists 👊',
+    [`WEAPON_KNIFE`] = 'Knife 🔪',
+    [`WEAPON_NIGHTSTICK`] = 'Nightstick 🥖',
+    [`WEAPON_HAMMER`] = 'Hammer 🔨',
+    [`WEAPON_BAT`] = 'Baseball Bat 🏏',
+    [`WEAPON_GOLFCLUB`] = 'Golf Club 🏌️',
+    [`WEAPON_CROWBAR`] = 'Crowbar 🔧',
+    [`WEAPON_PISTOL`] = 'Pistol 🔫',
+    [`WEAPON_COMBATPISTOL`] = 'Combat Pistol 🔫',
+    [`WEAPON_APPISTOL`] = 'AP Pistol 🔫',
+    [`WEAPON_PISTOL50`] = 'Pistol .50 🔫',
+    [`WEAPON_MICROSMG`] = 'Micro SMG 🔫',
+    [`WEAPON_SMG`] = 'SMG 🔫',
+    [`WEAPON_ASSAULTSMG`] = 'Assault SMG 🔫',
+    [`WEAPON_COMBATPDW`] = 'Combat PDW 🔫',
+    [`WEAPON_ASSAULTRIFLE`] = 'Assault Rifle 🔫',
+    [`WEAPON_CARBINERIFLE`] = 'Carbine Rifle 🔫',
+    [`WEAPON_ADVANCEDRIFLE`] = 'Advanced Rifle 🔫',
+    [`WEAPON_SPECIALCARBINE`] = 'Special Carbine 🔫',
+    [`WEAPON_BULLPUPRIFLE`] = 'Bullpup Rifle 🔫',
+    [`WEAPON_MG`] = 'MG 🔫',
+    [`WEAPON_COMBATMG`] = 'Combat MG 🔫',
+    [`WEAPON_PUMPSHOTGUN`] = 'Pump Shotgun 🔫',
+    [`WEAPON_SAWNOFFSHOTGUN`] = 'Sawnoff Shotgun 🔫',
+    [`WEAPON_ASSAULTSHOTGUN`] = 'Assault Shotgun 🔫',
+    [`WEAPON_BULLPUPSHOTGUN`] = 'Bullpup Shotgun 🔫',
+    [`WEAPON_HEAVYSHOTGUN`] = 'Heavy Shotgun 🔫',
+    [`WEAPON_SNIPERRIFLE`] = 'Sniper Rifle 🎯',
+    [`WEAPON_HEAVYSNIPER`] = 'Heavy Sniper 🎯',
+    [`WEAPON_MARKSMANRIFLE`] = 'Marksman Rifle 🎯',
+    [`WEAPON_GRENADELAUNCHER`] = 'Grenade Launcher 💥',
+    [`WEAPON_RPG`] = 'RPG 🚀',
+    [`WEAPON_MINIGUN`] = 'Minigun 🔫',
+    [`WEAPON_GRENADE`] = 'Grenade 💣',
+    [`WEAPON_MOLOTOV`] = 'Molotov 🔥',
+    [`WEAPON_STICKYBOMB`] = 'Sticky Bomb 💣',
+    [`WEAPON_PROXIMINE`] = 'Proximity Mine 💣',
+    [`WEAPON_SMOKEGRENADE`] = 'Smoke Grenade 💨',
+    [`WEAPON_RUN_OVER_BY_CAR`] = 'Run over by vehicle 🚗',
+    [`WEAPON_RAMMED_BY_CAR`] = 'Rammed by vehicle 🚗',
+    [`WEAPON_FALL`] = 'Fall Damage 🪂',
+    [`WEAPON_HIT_BY_WATER_CANNON`] = 'Water Cannon 💦',
+    [`WEAPON_EXPLO`] = 'Explosion 💥',
+    [`WEAPON_HELI_CRASH`] = 'Helicopter Crash 🚁',
+    [`WEAPON_FIRE`] = 'Burned 🔥',
+    [`WEAPON_DROWNING`] = 'Drowned 🌊',
+    [`WEAPON_DROWNING_IN_VEHICLE`] = 'Drowned in Vehicle 🌊🚗',
+}
+
+function GetWeaponName(hash)
+    if not hash or hash == 0 then return 'Unknown ❓' end
+    if Weapons[hash] then return Weapons[hash] end
+    local unsignedHash = hash < 0 and (hash + 0x100000000) or hash
+    if Weapons[unsignedHash] then return Weapons[unsignedHash] end
+    return ('Unknown (`0x%X`) ❓'):format(hash)
+end
+
 function GetIdentifiersTable(src)
     local ids = {}
     local numIds = GetNumPlayerIdentifiers(src)
 
     for i = 0, numIds - 1 do
-        local raw = GetPlayerIdentifier(src, i) -- e.g. "steam:11000010abcdef"
+        local raw = GetPlayerIdentifier(src, i)
         if raw then
             local idType, _ = raw:match('^([^:]+):(.+)$')
             if idType then
@@ -27,10 +77,8 @@ function GetIdentifiersTable(src)
         end
     end
 
-    -- IP comes from a dedicated native on newer server builds
     local endpoint = GetPlayerEndpoint(src)
     if endpoint then
-        -- Strip port if present (e.g. "1.2.3.4:30120" → "1.2.3.4")
         ids.ip = endpoint:match('^([^:]+)') or endpoint
     else
         ids.ip = 'unknown'
@@ -39,17 +87,7 @@ function GetIdentifiersTable(src)
     return ids
 end
 
---- Resolves the roleplay character name using whatever framework is running.
---- Detection order: ESX → QBCore → standalone (FiveM account name).
----
---- Uses GetResourceState() to check if a framework is active WITHOUT
---- adding a hard dependency in the manifest. This means the script works
---- on standalone, ESX, and QBCore servers with zero config changes.
----
----@param src number  player server id
----@return string
 function GetCharacterName(src)
-    -- ═══ ESX ═══
     if GetResourceState('es_extended') == 'started' then
         local ok, ESX = pcall(exports['es_extended'].getSharedObject, exports['es_extended'])
         if ok and ESX then
@@ -61,7 +99,6 @@ function GetCharacterName(src)
         end
     end
 
-    -- ═══ QBCore ═══
     if GetResourceState('qb-core') == 'started' then
         local ok, QBCore = pcall(exports['qb-core'].GetCoreObject, exports['qb-core'])
         if ok and QBCore then
@@ -77,15 +114,9 @@ function GetCharacterName(src)
         end
     end
 
-    -- ═══ Standalone fallback ═══
     return GetPlayerName(src) or 'Unknown'
 end
 
---- Formats a duration in milliseconds as a human-readable string.
---- e.g. 5520000 → "1h 32m"
----
----@param ms number  duration in milliseconds
----@return string
 function FormatDuration(ms)
     if not ms or ms < 0 then return 'unknown' end
     local totalMins = math.floor(ms / 60000)
@@ -98,11 +129,7 @@ function FormatDuration(ms)
     end
 end
 
---- Resolves the roleplay citizen ID / character identifier.
----@param src number  player server id
----@return string
 function GetCitizenID(src)
-    -- ═══ QBCore ═══
     if GetResourceState('qb-core') == 'started' then
         local ok, QBCore = pcall(exports['qb-core'].GetCoreObject, exports['qb-core'])
         if ok and QBCore then
@@ -113,7 +140,6 @@ function GetCitizenID(src)
         end
     end
 
-    -- ═══ ESX ═══
     if GetResourceState('es_extended') == 'started' then
         local ok, ESX = pcall(exports['es_extended'].getSharedObject, exports['es_extended'])
         if ok and ESX then

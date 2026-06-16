@@ -16,32 +16,29 @@
     - Max retries prevents infinite loops on persistent rate limits
 ]]
 
-local queue = {}  -- FIFO queue of pending webhook payloads
+local queue = {}
 
---- Builds a Discord embed object (plain Lua table, json.encode'd later).
----
----@param title       string        embed title
----@param description string        embed description / body text
----@param color       number        decimal RGB color
----@param fields      table|nil     optional array of { name=, value=, inline= }
----@param footer      string|nil    optional custom footer text
----@return table
 local function BuildEmbed(title, description, color, fields, footer)
     return {
+        author = {
+            name = Config.BotName,
+            icon_url = Config.BotAvatar,
+        },
         title       = title,
         description = description or '',
         color       = color or Config.Colors.grey,
         fields      = fields or {},
+        thumbnail   = {
+            url = Config.BotAvatar,
+        },
         footer      = {
             text = (footer and footer .. ' • ' or '') .. os.date('%Y-%m-%d %H:%M:%S'),
+            icon_url = Config.BotAvatar,
         },
-        timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'), -- ISO 8601 UTC for Discord's relative time
+        timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'),
     }
 end
 
---- Validates that a webhook URL looks real (not a placeholder).
----@param url string
----@return boolean
 local function IsValidWebhook(url)
     if not url then return false end
     if url:find('XXXX') then return false end
@@ -52,14 +49,10 @@ local function IsValidWebhook(url)
     return true
 end
 
---- Pushes a payload into the send queue.
----@param channel string  key from Config.Webhooks
----@param embed   table   embed built by BuildEmbed
 local function Enqueue(channel, embed)
     local url = Config.Webhooks[channel] or Config.Webhooks['custom']
 
     if not IsValidWebhook(url) then
-        -- Only warn once per channel to avoid log spam
         if not _warnedChannels then _warnedChannels = {} end
         if not _warnedChannels[channel] then
             print(('^3[ppr-logger]^7 No valid webhook configured for channel "%s" — messages will be dropped'):format(channel))
@@ -72,17 +65,11 @@ local function Enqueue(channel, embed)
         url      = url,
         embed    = embed,
         attempts = 0,
-        channel  = channel, -- for debug logging
+        channel  = channel,
     }
 end
 
--- ════════════════════════════════════════════════════════
---  QUEUE WORKER
--- ════════════════════════════════════════════════════════
--- Single background thread: pops one message, sends it, waits, repeats.
--- Handles 429 by re-queuing at the FRONT so order is preserved.
 CreateThread(function()
-    -- Brief startup delay to let the server finish loading
     Wait(2000)
 
     while true do
@@ -97,15 +84,14 @@ CreateThread(function()
 
             PerformHttpRequest(msg.url, function(status, _, headers)
                 if status == 429 then
-                    -- Rate limited: Discord tells us how long to wait via Retry-After
-                    local retryAfter = 5 -- default 5s
+                    local retryAfter = 5
                     if headers then
                         retryAfter = tonumber(headers['Retry-After'] or headers['retry-after']) or 5
                     end
 
                     msg.attempts = msg.attempts + 1
                     if msg.attempts <= Config.Queue.maxRetries then
-                        table.insert(queue, 1, msg) -- put back at front
+                        table.insert(queue, 1, msg)
                         print(('^3[ppr-logger]^7 Rate limited on "%s", retrying in %ds (attempt %d/%d)')
                             :format(msg.channel, retryAfter, msg.attempts, Config.Queue.maxRetries))
                     else
@@ -123,23 +109,11 @@ CreateThread(function()
 
             Wait(Config.Queue.delay)
         else
-            Wait(Config.Queue.idleInterval) -- idle: check queue periodically
+            Wait(Config.Queue.idleInterval)
         end
     end
 end)
 
--- ════════════════════════════════════════════════════════
---  PUBLIC API
--- ════════════════════════════════════════════════════════
-
---- Main logging function. Other resources call:
----   exports['ppr-logger']:Log('deaths', 'Player Died', 'X was killed', 'red', fields)
----
----@param channel string          webhook channel key from Config.Webhooks
----@param title   string          embed title
----@param message string          embed description
----@param color   string|number   color name from Config.Colors OR raw decimal
----@param fields  table|nil       optional array of { name=, value=, inline= }
 local function Log(channel, title, message, color, fields)
     if not channel or not title then
         print('^1[ppr-logger]^7 Log() called with missing channel or title')
@@ -158,9 +132,6 @@ local function Log(channel, title, message, color, fields)
     Enqueue(channel, BuildEmbed(title, message, resolvedColor, fields))
 end
 
--- Export for other resources
 exports('Log', Log)
 
--- Also make it callable internally by other server files of THIS resource
--- (exports can't be called within the same resource)
 LogInternal = Log

@@ -12,20 +12,16 @@
     6. onResourceStop   → clean up all ghost peds (no orphans)
 ]]
 
-local activePeds  = {}   -- netId → ped handle (for cleanup)
-local joinTimes   = {}   -- src → GetGameTimer() at join
-local lastDamage  = {}   -- src → { time = ms, attackerSrc = id }
-local lastDead    = {}   -- src → true if player was dead at last check
+local activePeds  = {}
+local joinTimes   = {}
+local lastDamage  = {}
+local lastDead    = {}
 
--- ════════════════════════════════════════════════════════
---  JOIN TIME TRACKING
--- ════════════════════════════════════════════════════════
 AddEventHandler('playerJoining', function()
     local src = source
     joinTimes[src] = GetGameTimer()
 end)
 
--- Also handle players already connected when the resource (re)starts
 AddEventHandler('onResourceStart', function(res)
     if res ~= GetCurrentResourceName() then return end
     for _, playerId in ipairs(GetPlayers()) do
@@ -36,11 +32,6 @@ AddEventHandler('onResourceStart', function(res)
     end
 end)
 
--- ════════════════════════════════════════════════════════
---  COMBAT-LOG DETECTION: DAMAGE TRACKING
--- ════════════════════════════════════════════════════════
--- Client sends this event when they take damage from another player.
--- We track the timestamp + attacker so we can flag disconnects in combat.
 RegisterNetEvent('ppr-logger:server:playerDamaged', function(attackerServerId)
     local src = source
     if not src or src <= 0 then return end
@@ -51,18 +42,12 @@ RegisterNetEvent('ppr-logger:server:playerDamaged', function(attackerServerId)
     }
 end)
 
--- Track if player is currently dead (reported by client)
 RegisterNetEvent('ppr-logger:server:playerDeathState', function(isDead)
     local src = source
     if not src or src <= 0 then return end
     lastDead[src] = isDead or false
 end)
 
---- Determines the disconnect type based on the reason string.
---- Returns: 'quit', 'timeout', 'kicked', 'crash', or 'unknown'
----@param reason string
----@return string type
----@return string label  human-readable label
 local function ClassifyDisconnect(reason)
     if not reason then return 'unknown', 'Unknown' end
     local r = reason:lower()
@@ -80,20 +65,13 @@ local function ClassifyDisconnect(reason)
     return 'unknown', '❓ Unknown'
 end
 
---- Checks if a disconnect looks like a combat log.
----@param src number
----@param disconnectType string
----@return boolean isCombatLog
----@return string|nil attackerName
 local function IsCombatLog(src, disconnectType)
     if not Config.CombatLog.enabled then return false, nil end
 
-    -- Check if player was dead when they left
     if Config.CombatLog.flagIfDead and lastDead[src] then
         return true, nil
     end
 
-    -- Check if player took damage recently
     local dmg = lastDamage[src]
     if dmg then
         local elapsed = GetGameTimer() - dmg.time
@@ -109,17 +87,9 @@ local function IsCombatLog(src, disconnectType)
     return false, nil
 end
 
--- ════════════════════════════════════════════════════════
---  MAIN: PLAYER DROPPED & SIMULATION
--- ════════════════════════════════════════════════════════
-
 local function TriggerPlayerDisconnect(src, reason, isSimulated)
-    -- ── 1) CAPTURE ──
-    -- The player's ped still exists during this event — that's the trick.
-    -- We grab everything we need before it despawns.
     local playerPed = GetPlayerPed(src)
     if not playerPed or playerPed == 0 then
-        -- Edge case: player never fully spawned (dropped during loading)
         if not isSimulated then
             joinTimes[src]  = nil
             lastDamage[src] = nil
@@ -142,14 +112,12 @@ local function TriggerPlayerDisconnect(src, reason, isSimulated)
     local combatLog, attackerName = IsCombatLog(src, disconnectType)
     local wasDead = lastDead[src] or false
 
-    -- Clean up tracking tables
     if not isSimulated then
         joinTimes[src]  = nil
         lastDamage[src] = nil
         lastDead[src]   = nil
     end
 
-    -- ── 2) DISCORD LOG (full data, including IP — staff-only) ──
     local title = combatLog
         and (isSimulated and '⚠️ POSSIBLE COMBAT LOG [TEST]' or '⚠️ POSSIBLE COMBAT LOG')
         or (isSimulated and '📤 Player Left [TEST]' or '📤 Player Left')
@@ -157,63 +125,75 @@ local function TriggerPlayerDisconnect(src, reason, isSimulated)
     local embedColor = combatLog and 'yellow' or 'red'
 
     local fields = {
-        { name = 'Character',   value = charName,         inline = true  },
-        { name = 'Account',     value = accName,           inline = true  },
-        { name = 'Session',     value = session,           inline = true  },
-        { name = 'Disconnect',  value = disconnectLabel,   inline = true  },
-        { name = 'Reason',      value = reason or 'unknown', inline = false },
-        { name = 'Last Coords', value = ('%.1f, %.1f, %.1f'):format(coords.x, coords.y, coords.z), inline = false },
+        { name = '👤 Character',   value = ('**%s**'):format(charName),         inline = true  },
+        { name = '🖥️ Account',     value = ('`%s`'):format(accName),           inline = true  },
+        { name = '⏳ Session Time', value = ('`%s`'):format(session),           inline = true  },
+        { name = '🚪 Disconnect',  value = disconnectLabel,                     inline = true  },
+        { name = '📍 Last Coords', value = ('`%.1f, %.1f, %.1f`'):format(coords.x, coords.y, coords.z), inline = true },
     }
 
-    -- Combat log extra info
+    fields[#fields + 1] = { name = '📝 Reason', value = ('`%s`'):format(reason or 'unknown'), inline = false }
+
     if combatLog then
         local combatInfo
         if wasDead then
-            combatInfo = 'Player disconnected while dead'
+            combatInfo = '💀 **Player disconnected while dead**'
         else
-            combatInfo = 'Player disconnected while in combat'
+            combatInfo = '⚔️ **Player disconnected while in combat**'
             if attackerName then
-                combatInfo = combatInfo .. (' (last attacked by: **%s**)'):format(attackerName)
+                combatInfo = combatInfo .. ('\n💥 Last attacked by: **%s**'):format(attackerName)
             end
         end
-        fields[#fields + 1] = { name = '⚠️ Combat Log', value = combatInfo, inline = false }
+        fields[#fields + 1] = { name = '⚠️ COMBAT LOG WARNING', value = combatInfo, inline = false }
     end
 
-    -- Identifiers
     for _, idType in ipairs(Config.Identifiers) do
         if ids[idType] then
-            fields[#fields + 1] = { name = idType:upper(), value = '`' .. ids[idType] .. '`', inline = false }
+            local emoji = '🔹'
+            local val = '`' .. ids[idType] .. '`'
+            if idType == 'license' then
+                emoji = '🔑'
+            elseif idType == 'steam' then
+                emoji = '🎮'
+            elseif idType == 'discord' then
+                emoji = '💬'
+                local discordId = ids[idType]:match("discord:(%d+)")
+                if discordId then
+                    val = ('<@%s> (%s)'):format(discordId, val)
+                end
+            elseif idType == 'fivem' then
+                emoji = '⚡'
+            end
+
+            fields[#fields + 1] = {
+                name   = emoji .. ' ' .. idType:upper(),
+                value  = val,
+                inline = false,
+            }
         end
     end
 
-    -- IP (Discord only — spoiler-tagged for extra caution)
     if Config.LogIP and ids.ip and ids.ip ~= 'unknown' then
-        fields[#fields + 1] = { name = 'IP', value = '||`' .. ids.ip .. '`||', inline = false }
+        fields[#fields + 1] = { name = '🌐 IP ADDRESS', value = '||`' .. ids.ip .. '`||', inline = false }
     end
 
-    -- Send to appropriate channel
     local channel = combatLog and Config.CombatLog.webhookChannel or 'leaves'
     LogInternal(channel, title, ('**%s** %s.'):format(charName, isSimulated and 'simulated disconnection' or 'disconnected'), embedColor, fields)
 
-    -- Also send to 'leaves' if combat log uses a separate channel
     if combatLog and Config.CombatLog.webhookChannel ~= 'leaves' then
         LogInternal('leaves', title, ('**%s** %s.'):format(charName, isSimulated and 'simulated disconnection' or 'disconnected'), embedColor, fields)
     end
 
-    -- ── 3) SPAWN GHOST PED ──
     if not Config.LeavePed.enabled then return end
 
-    -- Server-side CreatePed (requires OneSync)
     local ped = CreatePed(4, model, coords.x, coords.y, coords.z - 1.0, heading, true, true)
 
-    -- CreatePed is async: wait until it actually exists in the world
     local timeout = GetGameTimer() + 5000
     while not DoesEntityExist(ped) and GetGameTimer() < timeout do
         Wait(50)
     end
 
     if not DoesEntityExist(ped) then
-        -- Model failed (e.g. addon ped from a stopped resource) → retry with fallback
         ped = CreatePed(4, Config.LeavePed.fallbackModel, coords.x, coords.y, coords.z - 1.0, heading, true, true)
         timeout = GetGameTimer() + 5000
         while not DoesEntityExist(ped) and GetGameTimer() < timeout do
@@ -225,9 +205,6 @@ local function TriggerPlayerDisconnect(src, reason, isSimulated)
         end
     end
 
-    -- ── 4) STATEBAG ──
-    -- Attach public-safe data to the ped entity.
-    -- ⚠️  NO IP ADDRESS — this replicates to ALL clients.
     local publicIds = {}
     for _, idType in ipairs(Config.Identifiers) do
         publicIds[idType] = ids[idType]
@@ -243,12 +220,11 @@ local function TriggerPlayerDisconnect(src, reason, isSimulated)
         disconnectType = disconnectType,
         isCombatLog    = combatLog,
         ids            = publicIds,
-    }, true) -- true = replicated to clients
+    }, true)
 
     local netId = NetworkGetNetworkIdFromEntity(ped)
     activePeds[netId] = ped
 
-    -- Send client confirmation chat message if simulated
     if isSimulated then
         TriggerClientEvent('chat:addMessage', src, {
             color = { 0, 255, 0 },
@@ -257,7 +233,6 @@ local function TriggerPlayerDisconnect(src, reason, isSimulated)
         })
     end
 
-    -- ── 5) DESPAWN TIMER ──
     SetTimeout(Config.LeavePed.despawnTime, function()
         if DoesEntityExist(ped) then
             DeleteEntity(ped)
@@ -280,9 +255,6 @@ if Config.Debug then
     end, false)
 end
 
--- ════════════════════════════════════════════════════════
---  CLEANUP: No orphan peds on resource restart
--- ════════════════════════════════════════════════════════
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     for netId, ped in pairs(activePeds) do
