@@ -71,7 +71,13 @@ AddEventHandler('chatMessage', function(src, _, message)
         ('>>> %s'):format(safeMsg or ''), 'blue', fields)
 end)
 
-RegisterNetEvent('ppr-logger:server:playerDied', function(killerServerId, deathCoords, weaponHash)
+RegisterNetEvent('ppr-logger:server:requestDeathWebhook', function(killerServerId, deathCoords, weaponHash)
+    local src = source
+    local webhookUrl = Config.Webhooks['deaths']
+    TriggerClientEvent('ppr-logger:client:takeDeathScreenshot', src, webhookUrl, killerServerId, deathCoords, weaponHash)
+end)
+
+RegisterNetEvent('ppr-logger:server:playerDied', function(killerServerId, deathCoords, weaponHash, imageUrl)
     local src = source
 
     if not deathCoords or type(deathCoords) ~= 'vector3' then
@@ -94,5 +100,5 @@ RegisterNetEvent('ppr-logger:server:playerDied', function(killerServerId, deathC
     }
 
     LogInternal('deaths', '💀 Player Died',
-        ('**%s** (id %d) has died.'):format(GetCharacterName(src), src), 'orange', fields)
+        ('**%s** (id %d) has died.'):format(GetCharacterName(src), src), 'orange', fields, imageUrl)
 end)

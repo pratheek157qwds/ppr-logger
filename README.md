@@ -6,6 +6,14 @@ By **pratheek** · PPR Development
 
 ---
 
+## 📸 Previews
+
+| Disconnect Inspection Card (In-Game NUI) | Discord Webhook Logs (Embeds) |
+| :---: | :---: |
+| ![Disconnect Preview](disconnectpreview.png) | ![Logs Preview](logspreview.png) |
+
+---
+
 ## ✨ Features
 
 | Feature | Description |

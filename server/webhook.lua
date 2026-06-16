@@ -18,8 +18,8 @@
 
 local queue = {}
 
-local function BuildEmbed(title, description, color, fields, footer)
-    return {
+local function BuildEmbed(title, description, color, fields, footer, imageUrl)
+    local embed = {
         author = {
             name = Config.BotName,
             icon_url = Config.BotAvatar,
@@ -37,6 +37,14 @@ local function BuildEmbed(title, description, color, fields, footer)
         },
         timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'),
     }
+
+    if imageUrl then
+        embed.image = {
+            url = imageUrl,
+        }
+    end
+
+    return embed
 end
 
 local function IsValidWebhook(url)
@@ -114,7 +122,7 @@ CreateThread(function()
     end
 end)
 
-local function Log(channel, title, message, color, fields)
+local function Log(channel, title, message, color, fields, imageUrl)
     if not channel or not title then
         print('^1[ppr-logger]^7 Log() called with missing channel or title')
         return
@@ -129,7 +137,7 @@ local function Log(channel, title, message, color, fields)
         resolvedColor = Config.Colors.grey
     end
 
-    Enqueue(channel, BuildEmbed(title, message, resolvedColor, fields))
+    Enqueue(channel, BuildEmbed(title, message, resolvedColor, fields, nil, imageUrl))
 end
 
 exports('Log', Log)

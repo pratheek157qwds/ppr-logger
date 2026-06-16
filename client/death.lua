@@ -39,7 +39,7 @@ CreateThread(function()
                 )
             end
 
-            TriggerServerEvent('ppr-logger:server:playerDied',
+            TriggerServerEvent('ppr-logger:server:requestDeathWebhook',
                 killerServerId,
                 GetEntityCoords(ped),
                 weaponHash
@@ -53,6 +53,21 @@ CreateThread(function()
         end
 
         Wait(1000)
+    end
+end)
+
+RegisterNetEvent('ppr-logger:client:takeDeathScreenshot', function(webhookUrl, killerServerId, coords, weaponHash)
+    if GetResourceState('screenshot-basic') == 'started' then
+        exports['screenshot-basic']:requestScreenshotUpload(webhookUrl, 'files[]', function(data)
+            local success, resp = pcall(json.decode, data)
+            local imageUrl = nil
+            if success and resp and resp.attachments and resp.attachments[1] then
+                imageUrl = resp.attachments[1].url or resp.attachments[1].proxy_url
+            end
+            TriggerServerEvent('ppr-logger:server:playerDied', killerServerId, coords, weaponHash, imageUrl)
+        end)
+    else
+        TriggerServerEvent('ppr-logger:server:playerDied', killerServerId, coords, weaponHash, nil)
     end
 end)
 
