@@ -8,7 +8,7 @@
 ]]
 
 Config = {}
-Config.Debug = true
+Config.Debug = false
 
 Config.Webhooks = {
     ['joins']       = 'https://canary.discord.com/api/webhooks/1516016994040811633/XBTKcZaeqxXwwUJiLHZEax43yMmzn_l97F_izmsSw76de9JjjsR8yaUUvfSUeCUthN7C',
