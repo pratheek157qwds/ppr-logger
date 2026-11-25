@@ -59,7 +59,7 @@ Config.Webhooks = {
     ['chat']      = 'https://discord.com/api/webhooks/...',
     ['deaths']    = 'https://discord.com/api/webhooks/...',
     ['combatlog'] = 'https://discord.com/api/webhooks/...',
-    ['custom']    = 'https://discord.com/api/webhooks/...', -- fallback
+    ['custom']    = 'https://discord.com/api/webhooks/...', -- fallback when all other are empty or invalid
 }
 ```
 
@@ -103,7 +103,7 @@ exports['ppr-logger']:Log(channel, title, message, color, fields)
 
 **Example:**
 ```lua
-exports['ppr-logger']:Log('custom', '🏦 Bank Robbery', 
+exports['ppr-logger']:Log('custom', '💸 Bank Robbery', 
     'Player X robbed the Fleeca bank', 'orange', {
     { name = 'Amount', value = '$50,000', inline = true },
     { name = 'Location', value = 'Fleeca Bank, Route 68', inline = true },
